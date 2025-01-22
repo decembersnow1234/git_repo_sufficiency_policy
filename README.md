@@ -49,7 +49,35 @@ In this Jupyter Notebook we will:
 6. Export the policy clustering data. 
 
 To complete those tasks you will need:
-- The dataset of papers with the policy extraction of 1_policy_extraction code. 
+- The dataset of papers with the policy extraction of the 1_policy_extraction code. 
 
 At the end of this script you will extract: 
 - The named_cluster_df dataset of policy clusters and the sentences extracted during the 1_policy_extraction. 
+
+## 3_outcomes_clustering - Clustering process of the policies, cleaning of the correlations and preparing of the data analysis. 
+
+This code permits the culstering of outcomes and the cleaning of the correlations and preparing of the data analysis.
+
+It uses Sentence BERT as an embedder and HDBSCAN as a clustering algorithm. 
+- Sentence BERT is a Python module for accessing, using, and training state-of-the-art text and image embedding models. It can be used to compute embeddings using Sentence Transformer models (quickstart) or to calculate similarity scores using Cross-Encoder models.
+- HDBSCAN is a clustering algorithm extending DBSCAN by converting it into a hierarchical clustering algorithm. DBSCAN is a density-based clustering method that finds core samples and expands clusters from them. 
+
+In this Jupyter Notebook we will: 
+1. Import the data retrieved from the policy extraction process ; 
+2. Import the relevant packages ;
+3. Prepare data for clustering ;
+    1. Filtering ;
+4. Cluster with HDBSCAN ; 
+5. Re-process the clusters ; 
+    1. Export for manual check ;
+    2. Reclustering with HDBSCAN ;
+    3. Clean and name the final clusters ;
+6. Meta clustering. 
+
+To complete those tasks you will need:
+- The dataset of papers with the policy extraction of the 1_policy_extraction code. 
+- The dataset of papers with the clustered policy of the 2_policy_clustering code. 
+
+At the end of this script you will extract: 
+- The named_cluster_df dataset of outcome clusters and the sentences extracted during the 1_policy_extraction. 
+- The prepared dataset for the data analysis. 
