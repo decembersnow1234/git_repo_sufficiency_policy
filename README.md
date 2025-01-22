@@ -117,7 +117,28 @@ In this Jupyter Notebook we will:
 2. Import the relevant packages ;
 3. Prepare data for computing ;
 4. Compute the heatmap ; 
-5. Export data heatmap data.
+5. Export heatmap data.
+
+To complete those tasks you will need:
+- The dataset of papers with the policy extraction of the 4_similarity_score code. 
+
+At the end of this script you will extract: 
+- The heatmap_df dataset of sum of correlations pondered by the similarity score. 
+
+
+## 6_sufficiency_index - Computing sufficiency indices and comparing policies
+
+This code allows the calculation of the sufficiency index to compare policies extracted.
+
+It uses the outputs of the other phases that will be used to draw a bubble graph for each policies classified by Lower Limit and Upper Limit scores. The scores are calculated as geometric means of non-null correlation values. 
+
+In this Jupyter Notebook we will: 
+1. Import the data with similarity score ; 
+2. Import the relevant packages ;
+3. Sufficiency index calculus ;
+4. Drawing bubble graph ; 
+5. Export bubble graph data.
+    1. Select per quantile
 
 To complete those tasks you will need:
 - The dataset of papers with the policy extraction of the 4_similarity_score code. 
