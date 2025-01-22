@@ -27,3 +27,29 @@ To complete those tasks you will need:
 
 At the end of this script you will extract: 
 - The db_init dataset with a JSON format column containing the extracted policies, outcomes and correlations. 
+
+
+## 2_policy_clustering - Clustering process of the policies. 
+
+This code permits the culstering of policies.
+
+It uses Sentence BERT as an embedder and HDBSCAN as a clustering algorithm. 
+- Sentence BERT is a Python module for accessing, using, and training state-of-the-art text and image embedding models. It can be used to compute embeddings using Sentence Transformer models (quickstart) or to calculate similarity scores using Cross-Encoder models.
+- HDBSCAN is a clustering algorithm extending DBSCAN by converting it into a hierarchical clustering algorithm. DBSCAN is a density-based clustering method that finds core samples and expands clusters from them. 
+
+In this Jupyter Notebook we will: 
+1. Import the data retrieved from the policy extraction process ; 
+2. Import the relevant packages ;
+3. Prepare data for clustering ;
+4. Cluster with HDBSCAN ; 
+5. Re-process the clusters ; 
+    1. Export for manual check ;
+    2. Reclustering with HDBSCAN ;
+    3. Clean and name the final clusters ;
+6. Export the policy clustering data. 
+
+To complete those tasks you will need:
+- The dataset of papers with the policy extraction of 1_policy_extraction code. 
+
+At the end of this script you will extract: 
+- The named_cluster_df dataset of policy clusters and the sentences extracted during the 1_policy_extraction. 
