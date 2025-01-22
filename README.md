@@ -10,7 +10,7 @@ It contains 6 Jupyter Notebooks for the extraction and analysis of sufficiency p
 
 ## 1_policy_extraction - Extraction of policies, outcomes and correlations
 
-This code permits the extraction of policies, their outcomes and the correlations between them.
+This code allows the extraction of policies, their outcomes and the correlations between them.
 
 It uses gpt-4o-mini from the OpenAI library. 
 gpt-4o-mini, is a compact yet high-performance Large Language Model (LLM) developed by OpenAI. While GPT-4o-mini is not open-source, and its development and training processes lack transparency due to restricted access via OpenAI’s servers, its performance has been demonstrated to surpass other models.
@@ -31,7 +31,7 @@ At the end of this script you will extract:
 
 ## 2_policy_clustering - Clustering process of the policies. 
 
-This code permits the culstering of policies.
+This code allows the culstering of policies.
 
 It uses Sentence BERT as an embedder and HDBSCAN as a clustering algorithm. 
 - Sentence BERT is a Python module for accessing, using, and training state-of-the-art text and image embedding models. It can be used to compute embeddings using Sentence Transformer models (quickstart) or to calculate similarity scores using Cross-Encoder models.
@@ -54,9 +54,10 @@ To complete those tasks you will need:
 At the end of this script you will extract: 
 - The named_cluster_df dataset of policy clusters and the sentences extracted during the 1_policy_extraction. 
 
+
 ## 3_outcomes_clustering - Clustering process of the policies, cleaning of the correlations and preparing of the data analysis. 
 
-This code permits the culstering of outcomes and the cleaning of the correlations and preparing of the data analysis.
+This code allows the culstering of outcomes and the cleaning of the correlations and preparing of the data analysis.
 
 It uses Sentence BERT as an embedder and HDBSCAN as a clustering algorithm. 
 - Sentence BERT is a Python module for accessing, using, and training state-of-the-art text and image embedding models. It can be used to compute embeddings using Sentence Transformer models (quickstart) or to calculate similarity scores using Cross-Encoder models.
@@ -81,3 +82,25 @@ To complete those tasks you will need:
 At the end of this script you will extract: 
 - The named_cluster_df dataset of outcome clusters and the sentences extracted during the 1_policy_extraction. 
 - The prepared dataset for the data analysis. 
+
+
+## 4_measure_consensus - Computing of prevalence and building of the consensus matrix.
+
+This code allows the calculation of a consensus matrix of policies effects on outcomes.
+
+It uses the outputs of the other phases to compute the matrix of correlations pondered by a similarity score. The similarity score is cmputed using Proportional Sentence Match.
+
+In this Jupyter Notebook we will: 
+1. Import the data retrieved from the policy and outcome clustering process ; 
+2. Import the relevant packages ;
+3. Prepare data for computing ;
+4. Prevalence of policies in abstract Using Proportional Sentence Match ; 
+5. Export data with prevalence measure.
+
+To complete those tasks you will need:
+- The dataset of papers with the policy extraction of the 1_policy_extraction code. 
+- The dataset of papers with the clustered policy of the 2_policy_clustering code. 
+- The dataset of papers with the clustered policy of the 3_outcomes_clustering code. 
+
+At the end of this script you will extract: 
+- The named_cluster_df dataset of policies with prevalence metrics. 
