@@ -84,11 +84,11 @@ At the end of this script you will extract:
 - The prepared dataset for the data analysis. 
 
 
-## 4_measure_consensus - Computing of prevalence and building of the consensus matrix.
+## 4_similarity_score - Computing of prevalence and building of the consensus matrix.
 
-This code allows the calculation of a consensus matrix of policies effects on outcomes.
+This code allows the calculation of similarity of policy and abstract.
 
-It uses the outputs of the other phases to compute the matrix of correlations pondered by a similarity score. The similarity score is cmputed using Proportional Sentence Match.
+It uses the outputs of the other phases that will be used to compute the matrix of correlations pondered by a similarity score. The similarity score is cmputed using Proportional Sentence Match.
 
 In this Jupyter Notebook we will: 
 1. Import the data retrieved from the policy and outcome clustering process ; 
@@ -104,3 +104,23 @@ To complete those tasks you will need:
 
 At the end of this script you will extract: 
 - The named_cluster_df dataset of policies with prevalence metrics. 
+
+
+## 5_heatmap - Computing the heatmap matrix 
+
+This code allows the calculation of the heatmap of consensus on sense of correlation between policies and outcomes.
+
+It uses the outputs of the other phases that will be used to compute the heatmap matrix of sum of correlations pondered by the similarity score. 
+
+In this Jupyter Notebook we will: 
+1. Import the data with similarity score ; 
+2. Import the relevant packages ;
+3. Prepare data for computing ;
+4. Compute the heatmap ; 
+5. Export data heatmap data.
+
+To complete those tasks you will need:
+- The dataset of papers with the policy extraction of the 4_similarity_score code. 
+
+At the end of this script you will extract: 
+- The heatmap_df dataset of sum of correlations pondered by the similarity score. 
