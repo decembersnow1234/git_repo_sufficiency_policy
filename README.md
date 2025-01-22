@@ -29,7 +29,7 @@ At the end of this script you will extract:
 - The db_init dataset with a JSON format column containing the extracted policies, outcomes and correlations. 
 
 
-## 2_policy_clustering - Clustering process of the policies. 
+## 2_policy_clustering - Clustering process of the policies
 
 This code allows the culstering of policies.
 
@@ -55,7 +55,7 @@ At the end of this script you will extract:
 - The named_cluster_df dataset of policy clusters and the sentences extracted during the 1_policy_extraction. 
 
 
-## 3_outcomes_clustering - Clustering process of the policies, cleaning of the correlations and preparing of the data analysis. 
+## 3_outcomes_clustering - Clustering process of the outcomes, cleaning of the correlations and preparing of the data analysis
 
 This code allows the culstering of outcomes and the cleaning of the correlations and preparing of the data analysis.
 
@@ -84,11 +84,11 @@ At the end of this script you will extract:
 - The prepared dataset for the data analysis. 
 
 
-## 4_similarity_score - Computing of prevalence and building of the consensus matrix.
+## 4_similarity_score - Computing of prevalence and building of the consensus matrix
 
 This code allows the calculation of similarity of policy and abstract.
 
-It uses the outputs of the other phases that will be used to compute the matrix of correlations pondered by a similarity score. The similarity score is cmputed using Proportional Sentence Match.
+It uses the outputs of the other phases that will be used to compute the matrix of correlations pondered by a similarity score. The similarity score is computed using Proportional Sentence Match.
 
 In this Jupyter Notebook we will: 
 1. Import the data retrieved from the policy and outcome clustering process ; 
