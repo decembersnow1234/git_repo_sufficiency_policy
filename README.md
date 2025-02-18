@@ -1,4 +1,4 @@
-# Codes created for the article: "Evidence-based classification of sufficiency policies for mobility using Machine Learning on 18,000 articles."
+# Codes created for the article: "Evidence-based sufficiency policy narrative for mobility: leveraging Machine Learning to integrate planetary boundaries with equity."
 It contains 6 Jupyter Notebooks for the extraction and analysis of sufficiency policies from a screened dataset of articles:
 - 1_policy_extraction
 - 2_policy_clustering
