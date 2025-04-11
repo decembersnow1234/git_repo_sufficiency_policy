@@ -1,0 +1,103 @@
+# config.yaml
+# Configuration for the policy extraction and clustering pipeline
+
+# File paths
+paths:
+  data_dir: "data"          # Directory for input data
+  output_dir: "output"      # Directory for results and visualizations
+  model_dir: "models"       # Directory for saved models
+
+# Model configurations
+models:
+  # Which model to use for policy extraction
+  # In production, this would be a fine-tuned model specific to policy detection
+  policy_extractor: "roberta-base"
+  
+  # Model for impact classification
+  impact_classifier: "distilbert-base-uncased"
+  
+  # Sentence embedding model for clustering
+  semantic_model: "all-mpnet-base-v2"
+
+# Processing parameters
+parameters:
+  # Extraction parameters
+  min_sentence_length: 5
+  policy_confidence_threshold: 0.3
+  
+  # Clustering parameters
+  max_clusters: 20
+  min_cluster_size: 5
+  clustering_method: "hierarchical"  # Options: "hierarchical", "kmeans"
+
+# Policy extraction configuration
+extraction:
+  # Keywords that suggest a policy statement
+  policy_keywords:
+    - policy
+    - regulation
+    - legislation
+    - law
+    - rule
+    - guideline
+    - framework
+    - program
+    - initiative
+    - strategy
+    - plan
+    - measure
+    - intervention
+    - approach
+    - mechanism
+    - instrument
+    - proposal
+    - recommendation
+    - action
+    - should
+    - must
+    - need
+    - require
+    
+  # Syntactic patterns that suggest policy statements
+  # These are simplified for the config and would be implemented in code
+  policy_patterns:
+    - "MODAL VERB ACTION_VERB"
+    - "RECOMMEND THAT"
+    - "SUGGEST THAT"
+    - "POLICY TO VERB"
+
+# Impact classification configuration
+impact:
+  # Words suggesting positive impact
+  positive_keywords:
+    - improve
+    - increase
+    - enhance
+    - benefit
+    - positive
+    - advance
+    - strengthen
+    - promote
+    
+  # Words suggesting negative impact
+  negative_keywords:
+    - reduce
+    - decrease
+    - limit
+    - restrict
+    - negative
+    - harmful
+    - adverse
+    - worsen
+
+# Visualization settings
+visualization:
+  # Color scheme for plots
+  colors:
+    positive: "#2ecc71"
+    neutral: "#3498db"
+    negative: "#e74c3c"
+    unknown: "#95a5a6"
+    
+  # Number of representative examples per cluster
+  n_examples: 3
