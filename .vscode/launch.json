@@ -1,0 +1,15 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Run Policy Pipeline",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/enhanced/code/run_pipeline.py",
+            "args": ["--input", "df_mobility_all_articles.xls"],
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "cwd": "${workspaceFolder}/enhanced/code"
+        }
+    ]
+}

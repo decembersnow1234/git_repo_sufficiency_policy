@@ -47,4 +47,4 @@ def create_default_config():
         "extraction": {
             "policy_keywords": [
                 "policy", "regulation", "legislation", "law", "rule",
-                "guideline", "framework", "program", "initiative"
+                "guideline", "framework", "program", "initiative",
