@@ -48,3 +48,64 @@ def create_default_config():
             "policy_keywords": [
                 "policy", "regulation", "legislation", "law", "rule",
                 "guideline", "framework", "program", "initiative",
+                "strategy", "plan", "measure", "intervention",
+                "approach", "mechanism", "instrument", "proposal",
+                "recommendation", "action", "should", "must", "need", "require"
+            ],
+            "policy_patterns": [
+                "MODAL VERB ACTION_VERB",
+                "RECOMMEND THAT",
+                "SUGGEST THAT",
+                "POLICY TO VERB"
+            ]
+        },
+        "impact": {
+            "positive_keywords": [
+                "improve", "increase", "enhance", "benefit",
+                "positive", "advance", "strengthen", "promote"
+            ],
+            "negative_keywords": [
+                "reduce", "decrease", "limit", "restrict",
+                "negative", "harmful", "adverse", "worsen"
+            ]
+        },
+        "visualization": {
+            "colors": {
+                "positive": "#2ecc71",
+                "neutral": "#3498db",
+                "negative": "#e74c3c",
+                "unknown": "#95a5a6"
+            },
+            "n_examples": 3
+        }
+    }
+
+    config_path = Path("config.yaml")
+    if not config_path.exists():
+        with open(config_path, 'w') as config_file:
+            yaml.dump(default_config, config_file, default_flow_style=False)
+        logger.info(f"Created default configuration file at {config_path}")
+
+def main():
+    parser = argparse.ArgumentParser(description="Run the policy extraction and clustering pipeline.")
+    parser.add_argument("--config", default="config.yaml", help="Path to configuration file")
+    parser.add_argument("--input", required=True, help="Input file with abstracts (CSV or JSON)")
+    parser.add_argument("--skip-to", choices=['load', 'extract', 'classify', 'cluster', 'visualize'],
+                        help="Skip to a specific pipeline stage using checkpoints")
+
+    args = parser.parse_args()
+
+    # Ensure the configuration file exists
+    config_path = Path(args.config)
+    if not config_path.exists():
+        logger.error(f"Configuration file not found: {config_path}")
+        sys.exit(1)
+
+    # Initialize and run the pipeline
+    pipeline = PolicyPipeline(config_path)
+    pipeline.run(args.input, args.skip_to)
+
+if __name__ == "__main__":
+    logger = setup_logging()
+    create_default_config()
+    main()

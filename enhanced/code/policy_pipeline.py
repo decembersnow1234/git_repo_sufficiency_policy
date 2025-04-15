@@ -12,6 +12,7 @@ import pandas as pd
 from pathlib import Path
 from typing import Dict, List, Tuple, Optional, Union
 import torch
+from sklearn.cluster import AgglomerativeClustering
 from torch.utils.data import Dataset, DataLoader
 from transformers import (
     AutoTokenizer, 
@@ -29,6 +30,7 @@ import yaml
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 import seaborn as sns
+import copy
 
 # Configure logging
 logging.basicConfig(
@@ -40,6 +42,24 @@ logging.basicConfig(
     ]
 )
 logger = logging.getLogger(__name__)
+
+# Custom JSON encoder to handle non-serializable objects
+class NLPEncoder(json.JSONEncoder):
+    def default(self, obj):
+        # Handle spaCy Token objects
+        if hasattr(obj, 'text') and hasattr(obj, 'pos_'):
+            return {
+                'text': str(obj),
+                'pos': obj.pos_,
+                'dep': obj.dep_
+            }
+        # Handle numpy arrays
+        elif isinstance(obj, np.ndarray):
+            return obj.tolist()
+        # Handle any other custom objects
+        elif hasattr(obj, '__dict__'):
+            return str(obj)
+        return json.JSONEncoder.default(self, obj)
 
 class Config:
     """Configuration manager for the pipeline"""
@@ -72,18 +92,25 @@ class Config:
 
 class DataProcessor:
     """Data loading and preprocessing for scientific abstracts"""
-    
+
     def __init__(self, config: Config):
         self.config = config
         self.nlp = spacy.load("en_core_web_sm")
-        
+
     def load_data(self, input_file: str) -> pd.DataFrame:
         """Load data from CSV, JSON, or Excel file"""
         file_path = self.config.data_dir / input_file
-        
+
+        # Print the resolved file path for debugging
+        resolved_path = file_path.resolve()
+        print(f"Attempting to load file from: {resolved_path}")
+
         if not file_path.exists():
-            raise FileNotFoundError(f"Input file not found: {file_path}")
-        
+            # Try using the input_file as an absolute path if it's not found in data_dir
+            file_path = Path(input_file)
+            if not file_path.exists():
+                raise FileNotFoundError(f"Input file not found: {input_file}")
+
         if file_path.suffix.lower() == '.csv':
             df = pd.read_csv(file_path)
         elif file_path.suffix.lower() == '.json':
@@ -92,9 +119,10 @@ class DataProcessor:
             df = pd.read_excel(file_path)
         else:
             raise ValueError(f"Unsupported file format: {file_path.suffix}")
-        
+
         logger.info(f"Loaded {len(df)} records from {file_path}")
         return df
+
     
     def preprocess_abstracts(self, abstracts: List[str]) -> List[Dict]:
         """
@@ -109,7 +137,7 @@ class DataProcessor:
                 
             doc = self.nlp(abstract)
             
-            # Extract key information
+            # Extract key information in a serializable format
             processed_doc = {
                 'text': abstract,
                 'sentences': [sent.text for sent in doc.sents],
@@ -125,7 +153,7 @@ class DataProcessor:
                 'noun_chunks': [chunk.text for chunk in doc.noun_chunks],
                 'tokens': [
                     {
-                        'text': token, 
+                        'text': token.text,
                         'pos': token.pos_,
                         'dep': token.dep_
                     }
@@ -218,7 +246,7 @@ class PolicyExtractor:
                         any(t.get('dep') == 'ROOT' and t.get('pos') == 'VERB' 
                             for t in doc['tokens']) 
                         for token in doc['tokens'] 
-                        if token.get('text').lower() in ['should', 'must', 'need', 'could', 'would'])
+                        if isinstance(token, dict) and token.get('text', '').lower() in ['should', 'must', 'need', 'could', 'would'])
         
         # Combine signals (would be tuned based on experiments)
         is_policy = (keyword_match and transformer_confidence > 0.3) or (syntax_pattern and keyword_match)
@@ -289,6 +317,7 @@ class PolicyClusterer:
         
         return policies
     
+    # Inside the cluster_policies method
     def cluster_policies(self, policies: List[Dict]) -> Tuple[List[Dict], Dict]:
         """
         Cluster policy statements based on semantic similarity
@@ -296,29 +325,29 @@ class PolicyClusterer:
         if not policies:
             logger.warning("No policies to cluster")
             return policies, {}
-        
+
         # Extract embeddings
         embeddings = np.array([policy['embedding'] for policy in policies])
-        
+
         # Find optimal number of clusters
         max_clusters = min(20, len(policies) // 5) if len(policies) > 10 else 2
         best_n_clusters = self._find_optimal_clusters(embeddings, max_clusters)
-        
+
         # Perform hierarchical clustering
         cluster_model = AgglomerativeClustering(
             n_clusters=best_n_clusters,
-            affinity='euclidean',
-            linkage='ward'
+            linkage='ward',  # Linkage criterion
+            metric='euclidean'  # Distance metric
         )
         clusters = cluster_model.fit_predict(embeddings)
-        
+
         # Assign cluster IDs to policies
         for i, policy in enumerate(policies):
             policy['cluster_id'] = int(clusters[i])
-        
+
         # Generate cluster metadata
         cluster_meta = self._generate_cluster_metadata(policies, best_n_clusters)
-        
+
         logger.info(f"Clustered policies into {best_n_clusters} groups")
         return policies, cluster_meta
     
@@ -580,21 +609,45 @@ class PolicyPipeline:
     def _save_checkpoint(self, stage: str, data):
         """Save checkpoint data to disk"""
         checkpoint_file = self.checkpoint_dir / f"{stage}_checkpoint.json"
+
+        # Create a deep copy to avoid modifying the original data
+        data_copy = copy.deepcopy(data)
         
-        # Convert numpy arrays to lists for JSON serialization
-        if stage == 'extraction' or stage == 'classification':
-            for item in data:
-                if 'embedding' in item:
-                    item['embedding'] = item['embedding'].tolist()
-        elif stage == 'clustering':
-            for item in data['policies']:
-                if 'embedding' in item:
-                    item['embedding'] = item['embedding'].tolist()
-        
-        with open(checkpoint_file, 'w') as f:
-            json.dump(data, f)
-        
-        logger.info(f"Saved checkpoint for stage: {stage}")
+        try:
+            # Use the custom encoder to handle all serialization
+            with open(checkpoint_file, 'w') as f:
+                json.dump(data_copy, f, cls=NLPEncoder)
+            logger.info(f"Saved checkpoint for stage: {stage}")
+        except TypeError as e:
+            logger.error(f"Serialization error in {stage} checkpoint: {e}")
+            # Attempt more aggressive object conversion if normal serialization fails
+            if stage == 'preprocessing':
+                # Convert any remaining problematic objects to strings
+                serializable_data = self._make_fully_serializable(data_copy)
+                with open(checkpoint_file, 'w') as f:
+                    json.dump(serializable_data, f)
+                logger.info(f"Saved {stage} checkpoint after additional processing")
+    
+    def _make_fully_serializable(self, data):
+        """Recursively convert any non-serializable objects to serializable forms"""
+        if isinstance(data, dict):
+            return {k: self._make_fully_serializable(v) for k, v in data.items()}
+        elif isinstance(data, list):
+            return [self._make_fully_serializable(item) for item in data]
+        elif isinstance(data, np.ndarray):
+            return data.tolist()
+        elif hasattr(data, 'text') and hasattr(data, 'pos_'):  # Likely a spaCy token
+            return {
+                'text': str(data.text),
+                'pos': data.pos_,
+                'dep': data.dep_
+            }
+        elif hasattr(data, '__dict__') and not isinstance(data, (str, int, float, bool)):
+            # Any other custom objects with attributes
+            return str(data)
+        else:
+            # Primitive types that are already serializable
+            return data
     
     def _load_checkpoint(self, stage: str):
         """Load checkpoint data from disk"""
