@@ -2,15 +2,13 @@
 # run_pipeline.py
 """
 Script to run the policy extraction and clustering pipeline.
-"""
-
+ain"""
 import argparse
 import logging
 from pathlib import Path
 import yaml
 import sys
-import time
-from policy_pipeline import PolicyPipeline
+import timefrom policy_pipeline import PolicyPipeline, DataProcessor, PolicyExtractor, PolicyClusterer, Visualizer, Config
 
 def setup_logging():
     """Configure logging"""
@@ -79,20 +77,27 @@ def create_default_config():
             "n_examples": 3
         }
     }
-
     config_path = Path("config.yaml")
     if not config_path.exists():
         with open(config_path, 'w') as config_file:
             yaml.dump(default_config, config_file, default_flow_style=False)
         logger.info(f"Created default configuration file at {config_path}")
 
+def load_components_from_config(config_path):
+    """Load pipeline components from the configuration file"""
+    config = Config(config_path)  # Instantiate the Config class
+    processor = DataProcessor(config)
+    extractor = PolicyExtractor(config)
+    clusterer = PolicyClusterer(config)
+    visualizer = Visualizer(config)
+    return processor, extractor, clusterer, visualizer
+
 def main():
     parser = argparse.ArgumentParser(description="Run the policy extraction and clustering pipeline.")
     parser.add_argument("--config", default="config.yaml", help="Path to configuration file")
     parser.add_argument("--input", required=True, help="Input file with abstracts (CSV or JSON)")
     parser.add_argument("--skip-to", choices=['load', 'extract', 'classify', 'cluster', 'visualize'],
-                        help="Skip to a specific pipeline stage using checkpoints")
-
+    help="Skip to a specific pipeline stage using checkpoints")
     args = parser.parse_args()
 
     # Ensure the configuration file exists
@@ -101,8 +106,8 @@ def main():
         logger.error(f"Configuration file not found: {config_path}")
         sys.exit(1)
 
-    # Initialize and run the pipeline
-    pipeline = PolicyPipeline(config_path)
+    # Initialize and run the pipeline using the implementation from policy_pipeline.py
+    pipeline = PolicyPipeline(args.config, logger=logger)
     pipeline.run(args.input, args.skip_to)
 
 if __name__ == "__main__":

@@ -319,6 +319,15 @@ class PolicyClusterer:
     
     # Inside the cluster_policies method
     def cluster_policies(self, policies: List[Dict]) -> Tuple[List[Dict], Dict]:
+        logger.info("Starting policy clustering")
+        cluster_model = AgglomerativeClustering(
+            n_clusters=best_n_clusters,
+            linkage='ward',  # Linkage criterion
+            metric='euclidean'  # Distance metric
+        )
+        logger.info("Running clustering algorithm")
+        clusters = cluster_model.fit_predict(embeddings)
+        logger.info("Clustering algorithm finished")
         """
         Cluster policy statements based on semantic similarity
         """
@@ -549,9 +558,10 @@ class Visualizer:
 class PolicyPipeline:
     """Main pipeline orchestrating the policy extraction and clustering process"""
     
-    def __init__(self, config_path: str = "config.yaml"):
+    def __init__(self, config_path: str = "config.yaml", logger=None):
         """Initialize the pipeline with configuration"""
         self.config = Config(config_path)
+        self.logger = logger
         self.processor = DataProcessor(self.config)
         self.extractor = PolicyExtractor(self.config)
         self.clusterer = PolicyClusterer(self.config)
