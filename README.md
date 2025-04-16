@@ -1,147 +1,78 @@
-# Codes created for the article: "Evidence-based sufficiency policy narrative for mobility: leveraging Machine Learning to integrate planetary boundaries with equity."
-It contains 6 Jupyter Notebooks for the extraction and analysis of sufficiency policies from a screened dataset of articles:
-- 1_policy_extraction
-- 2_policy_clustering
-- 3_outcomes_clustering
-- 4_measure_consensus
-- 5_heatmap
-- 6_sufficiency_index
 
+# Policy Extraction and Clustering Pipeline
 
-## 1_policy_extraction - Extraction of policies, outcomes and correlations
+This repository contains the code for extracting and clustering policy statements from a dataset of scientific abstracts. The pipeline is designed to handle large datasets and perform complex NLP tasks using advanced machine learning models.
 
-This code allows the extraction of policies, their outcomes and the correlations between them.
+## Overview
 
-It uses gpt-4o-mini from the OpenAI library. 
-gpt-4o-mini, is a compact yet high-performance Large Language Model (LLM) developed by OpenAI. While GPT-4o-mini is not open-source, and its development and training processes lack transparency due to restricted access via OpenAI’s servers, its performance has been demonstrated to surpass other models.
+The pipeline consists of several stages, each responsible for a specific part of the process:
 
-In this Jupyter Notebook we will: 
-1. Import the data retrieved from the screening process ; 
-2. Import the relevant packages ;
-3. Extract policies, outcomes and correlations with gpt-4o-mini ;
-4. Export the data. 
+1. **Data Loading and Preprocessing**:
+   - **Purpose**: Load and preprocess the input data to prepare it for policy extraction.
+   - **Approach**:
+     - **spaCy**: We use spaCy for its robust NLP capabilities, including tokenization, entity recognition, and dependency parsing. This helps in extracting structured information from text data efficiently.
+   - **Steps**:
+     - Load data from CSV, JSON, or Excel files.
+     - Preprocess abstracts using spaCy to extract tokens, entities, and dependencies.
+   - **Output**: Preprocessed documents with annotations.
 
-To complete those tasks you will need:
-- A dataset of screened papers relevant to your research question (db_init) ; 
-- A OpenAi account. 
+2. **Policy Extraction**:
+   - **Purpose**: Extract policy statements from the preprocessed documents.
+   - **Approach**:
+     - **Fine-tuned Transformer Model**: We use a transformer-based model (e.g., RoBERTa) fine-tuned on policy-related texts to accurately identify and extract policy statements. Transformer models are well-suited for this task due to their ability to capture context and semantic meaning.
+   - **Steps**:
+     - Use the transformer model to identify policy statements.
+     - Extract key information such as actors, targets, and mechanisms.
+   - **Output**: Extracted policy statements with metadata.
 
-At the end of this script you will extract: 
-- The db_init dataset with a JSON format column containing the extracted policies, outcomes and correlations. 
+3. **Impact Classification**:
+   - **Purpose**: Classify the impact of each policy statement as positive, neutral, or negative.
+   - **Approach**:
+     - **Fine-tuned Transformer Model**: We use a transformer model fine-tuned on impact classification tasks. This model can accurately classify the sentiment or impact of policy statements based on the context provided in the text.
+   - **Steps**:
+     - Use the fine-tuned transformer model to classify policy impacts.
+     - Assign confidence scores to each classification.
+   - **Output**: Classified policy statements with impact labels and confidence scores.
 
+4. **Policy Clustering**:
+   - **Purpose**: Cluster policy statements based on semantic similarity.
+   - **Approach**:
+     - **Sentence Transformers**: We use Sentence Transformers to generate embeddings for policy statements. These models are designed to produce semantically meaningful sentence embeddings, which are crucial for clustering similar statements together.
+     - **Agglomerative Clustering**: We apply hierarchical clustering to group similar policies. Agglomerative clustering is chosen for its ability to create a hierarchy of clusters, which can be useful for understanding the structure of the data.
+   - **Steps**:
+     - Generate embeddings for policy statements using Sentence Transformers.
+     - Apply hierarchical clustering to group similar policies based on their embeddings.
+   - **Output**: Clustered policy statements with cluster metadata.
 
-## 2_policy_clustering - Clustering process of the policies
+5. **Visualization**:
+   - **Purpose**: Generate visualizations to analyze the clustered policy statements.
+   - **Approach**:
+     - **Matplotlib and Seaborn**: These libraries are used to create visualizations that help in understanding the distribution and characteristics of the clustered policies. Visualizations are essential for interpreting the results and communicating insights effectively.
+   - **Steps**:
+     - Create plots to visualize the impact distribution by cluster.
+     - Generate a detailed cluster report for further analysis.
+   - **Output**: Visualizations and reports for analyzing the clustered policy statements.
 
-This code allows the culstering of policies.
+## Requirements
 
-It uses Sentence BERT as an embedder and HDBSCAN as a clustering algorithm. 
-- Sentence BERT is a Python module for accessing, using, and training state-of-the-art text and image embedding models. It can be used to compute embeddings using Sentence Transformer models (quickstart) or to calculate similarity scores using Cross-Encoder models.
-- HDBSCAN is a clustering algorithm extending DBSCAN by converting it into a hierarchical clustering algorithm. DBSCAN is a density-based clustering method that finds core samples and expands clusters from them. 
+- Python 3.x
+- Required libraries: `pandas`, `spacy`, `transformers`, `sentence-transformers`, `scikit-learn`, `matplotlib`, `seaborn`
+- A dataset of scientific abstracts in CSV, JSON, or Excel format
 
-In this Jupyter Notebook we will: 
-1. Import the data retrieved from the policy extraction process ; 
-2. Import the relevant packages ;
-3. Prepare data for clustering ;
-4. Cluster with HDBSCAN ; 
-5. Re-process the clusters ; 
-    1. Export for manual check ;
-    2. Reclustering with HDBSCAN ;
-    3. Clean and name the final clusters ;
-6. Export the policy clustering data. 
+## Usage
 
-To complete those tasks you will need:
-- The dataset of papers with the policy extraction of the 1_policy_extraction code. 
+1. **Activate the Conda Environment**:
+   ```bash
+   conda activate your_env_name
+   ```
 
-At the end of this script you will extract: 
-- The named_cluster_df dataset of policy clusters and the sentences extracted during the 1_policy_extraction. 
+2. **Run the Pipeline**:
+   ```bash
+   python run_pipeline.py --input path/to/your/datafile.xlsx --skip-to load
+   ```
 
+3. **Monitor Progress**:
+   - Check the log files and system resources to monitor the progress of each stage.
 
-## 3_outcomes_clustering - Clustering process of the outcomes, cleaning of the correlations and preparing of the data analysis
-
-This code allows the culstering of outcomes and the cleaning of the correlations and preparing of the data analysis.
-
-It uses Sentence BERT as an embedder and HDBSCAN as a clustering algorithm. 
-- Sentence BERT is a Python module for accessing, using, and training state-of-the-art text and image embedding models. It can be used to compute embeddings using Sentence Transformer models (quickstart) or to calculate similarity scores using Cross-Encoder models.
-- HDBSCAN is a clustering algorithm extending DBSCAN by converting it into a hierarchical clustering algorithm. DBSCAN is a density-based clustering method that finds core samples and expands clusters from them. 
-
-In this Jupyter Notebook we will: 
-1. Import the data retrieved from the policy extraction process ; 
-2. Import the relevant packages ;
-3. Prepare data for clustering ;
-    1. Filtering ;
-4. Cluster with HDBSCAN ; 
-5. Re-process the clusters ; 
-    1. Export for manual check ;
-    2. Reclustering with HDBSCAN ;
-    3. Clean and name the final clusters ;
-6. Meta clustering. 
-
-To complete those tasks you will need:
-- The dataset of papers with the policy extraction of the 1_policy_extraction code. 
-- The dataset of papers with the clustered policy of the 2_policy_clustering code. 
-
-At the end of this script you will extract: 
-- The named_cluster_df dataset of outcome clusters and the sentences extracted during the 1_policy_extraction. 
-- The prepared dataset for the data analysis. 
-
-
-## 4_similarity_score - Computing of prevalence and building of the consensus matrix
-
-This code allows the calculation of similarity of policy and abstract.
-
-It uses the outputs of the other phases that will be used to compute the matrix of correlations pondered by a similarity score. The similarity score is computed using Proportional Sentence Match.
-
-In this Jupyter Notebook we will: 
-1. Import the data retrieved from the policy and outcome clustering process ; 
-2. Import the relevant packages ;
-3. Prepare data for computing ;
-4. Prevalence of policies in abstract Using Proportional Sentence Match ; 
-5. Export data with prevalence measure.
-
-To complete those tasks you will need:
-- The dataset of papers with the policy extraction of the 1_policy_extraction code. 
-- The dataset of papers with the clustered policy of the 2_policy_clustering code. 
-- The dataset of papers with the clustered policy of the 3_outcomes_clustering code. 
-
-At the end of this script you will extract: 
-- The named_cluster_df dataset of policies with prevalence metrics. 
-
-
-## 5_heatmap - Computing the heatmap matrix 
-
-This code allows the calculation of the heatmap of consensus on sense of correlation between policies and outcomes.
-
-It uses the outputs of the other phases that will be used to compute the heatmap matrix of sum of correlations pondered by the similarity score. 
-
-In this Jupyter Notebook we will: 
-1. Import the data with similarity score ; 
-2. Import the relevant packages ;
-3. Prepare data for computing ;
-4. Compute the heatmap ; 
-5. Export heatmap data.
-
-To complete those tasks you will need:
-- The dataset of papers with the policy extraction of the 4_similarity_score code. 
-
-At the end of this script you will extract: 
-- The heatmap_df dataset of sum of correlations pondered by the similarity score. 
-
-
-## 6_sufficiency_index - Computing sufficiency indices and comparing policies
-
-This code allows the calculation of the sufficiency index to compare policies extracted.
-
-It uses the outputs of the other phases that will be used to draw a bubble graph for each policies classified by Lower Limit and Upper Limit scores. The scores are calculated as geometric means of non-null correlation values. 
-
-In this Jupyter Notebook we will: 
-1. Import the data with similarity score ; 
-2. Import the relevant packages ;
-3. Sufficiency index calculus ;
-4. Drawing bubble graph ; 
-5. Export bubble graph data.
-    1. Select per quantile
-
-To complete those tasks you will need:
-- The dataset of papers with the policy extraction of the 4_similarity_score code. 
-
-At the end of this script you will extract: 
-- The heatmap_df dataset of sum of correlations pondered by the similarity score. 
+4. **Inspect Output**:
+   - Verify the output files and visualizations generated at each stage.
