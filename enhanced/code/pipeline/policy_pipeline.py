@@ -3,10 +3,12 @@
 Centralized pipeline for policy extraction and clustering from scientific abstracts
 with enhanced NLP models and semantic clustering.
 """
-from policy_extractor import PolicyExtractor
-from policy_clusterer import PolicyClusterer
-from data_processor import DataProcessor
-from nlp_encoder import NLPEncoder
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+
+from modules import data_processor, nlp_encoder, policy_clusterer, policy_extractor,visualizer
+import PolicyClusterer, DataProcessor,NLPEncoder
 
 import os
 import json
