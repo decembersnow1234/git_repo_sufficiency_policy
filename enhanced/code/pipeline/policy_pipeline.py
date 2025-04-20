@@ -5,10 +5,14 @@ with enhanced NLP models and semantic clustering.
 """
 import sys
 import os
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
-
+#sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+sys.path.append("C:\\Users\\tchu\\Documents\\Personnel\\D4G\\Sufficiency policy\\scripts\\git_repo_sufficiency_policy\\enhanced\\code")
 from modules import data_processor, nlp_encoder, policy_clusterer, policy_extractor,visualizer
-import PolicyClusterer, DataProcessor,NLPEncoder
+from modules.policy_clusterer import PolicyClusterer
+from modules.data_processor import DataProcessor
+from modules.nlp_encoder import NLPEncoder
+from modules.policy_extractor import PolicyExtractor
+from modules.visualizer import Visualizer
 
 import os
 import json

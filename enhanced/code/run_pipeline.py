@@ -8,7 +8,20 @@ import logging
 from pathlib import Path
 import yaml
 import sys
-import timefrom policy_pipeline import PolicyPipeline, DataProcessor, PolicyExtractor, PolicyClusterer, Visualizer, Config
+import time 
+
+import sys
+import os
+#sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+sys.path.append("C:\\Users\\tchu\\Documents\\Personnel\\D4G\\Sufficiency policy\\scripts\\git_repo_sufficiency_policy\\enhanced\\code")
+from modules import data_processor, nlp_encoder, policy_clusterer, policy_extractor,visualizer
+from modules.policy_clusterer import PolicyClusterer
+from modules.data_processor import DataProcessor
+from modules.nlp_encoder import NLPEncoder
+from modules.policy_extractor import PolicyExtractor
+from modules.visualizer import Visualizer
+from pipeline import policy_pipeline
+from pipeline.policy_pipeline import PolicyPipeline
 
 def setup_logging():
     """Configure logging"""
