@@ -31,31 +31,33 @@ class PolicyExtractor:
 
     def extract_policies(self, df):
         """Extract policies using Spark UDF"""
-        policy_udf = udf(self._extract_policy_details, ArrayType(StringType()))
 
-        # Ensure correct column reference using col("abstract")
+        def extract_policy_details(text: str) -> list:
+            """Extract structured information from a policy statement"""
+
+            if not text or not isinstance(text, str):  # Handle cases where text is None or not valid
+                return []
+
+            # Load SpaCy inside function to avoid serialization issues
+            nlp_local = spacy.load("en_core_web_sm")
+            doc = nlp_local(text)
+
+            # Extract policy sentences
+            policy_sentences = [sent.text for sent in doc.sents if any(word in sent.text.lower() for word in self.policy_keywords)]
+
+            # Perform entity extraction
+            entities = [{'text': ent.text, 'label': ent.label_} for ent in doc.ents if ent.label_ in {'ORG', 'GPE', 'PERSON'}]
+
+            # Generate embeddings for clustering
+            embeddings = [self.sentence_encoder.encode(sent) for sent in policy_sentences]
+
+            return [{"text": sent, "entities": entities, "embedding": emb.tolist()} for sent, emb in zip(policy_sentences, embeddings)]
+
+        # Convert function to Spark UDF
+        policy_udf = udf(extract_policy_details, ArrayType(StringType()))
+
+        # Apply UDF using the correct column reference
         df = df.withColumn("policy_statements", policy_udf(col("abstract")))
 
         logging.info("Policy extraction completed in parallel using Spark UDF")
         return df
-
-    def _extract_policy_details(self, text: str) -> list:
-        """Extract structured information from a policy statement"""
-
-        if not text or not isinstance(text, str):  # Handle cases where text is None or not valid
-            return []
-
-        # Load SpaCy inside function to avoid Spark UDF serialization issues
-        nlp = spacy.load("en_core_web_sm")
-        doc = nlp(text)
-
-        # Extract policy sentences
-        policy_sentences = [sent.text for sent in doc.sents if any(word in sent.text.lower() for word in self.policy_keywords)]
-
-        # Perform entity extraction
-        entities = [{'text': ent.text, 'label': ent.label_} for ent in doc.ents if ent.label_ in {'ORG', 'GPE', 'PERSON'}]
-
-        # Generate embeddings for clustering
-        embeddings = [self.sentence_encoder.encode(sent) for sent in policy_sentences]
-
-        return [{"text": sent, "entities": entities, "embedding": emb.tolist()} for sent, emb in zip(policy_sentences, embeddings)]

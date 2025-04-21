@@ -17,6 +17,7 @@ class DataProcessor:
         """Initialize DataProcessor with Spark & SpaCy"""
         self.config = config
         self.spark = spark
+        self.nlp = spacy.load("en_core_web_sm")  # Load SpaCy globally OUTSIDE Spark transformations
 
     def load_data(self, input_file: str):
         """Load data efficiently using PySpark and Pandas for Excel files"""
@@ -54,8 +55,6 @@ class DataProcessor:
 
         logging.info(f"Loaded {df.count()} records from {file_path}")
         return df
-   
-
 
     def preprocess_abstracts(self, df):
         """Process abstracts using SpaCy (parallelized with Spark UDF)"""
@@ -65,9 +64,9 @@ class DataProcessor:
             raise ValueError("DataFrame does not contain column 'abstract'")
 
         def extract_entities(text: str):
-            """Load SpaCy inside UDF to avoid pickling issues"""
-            nlp = spacy.load("en_core_web_sm")  # Load spaCy inside function
-            doc = nlp(text)
+            """Extract entities using SpaCy **inside** the UDF (to prevent serialization issues)"""
+            nlp_local = spacy.load("en_core_web_sm")  # Load SpaCy inside function to avoid Spark serialization errors
+            doc = nlp_local(text)
             return [ent.text for ent in doc.ents]
 
         # Convert extract_entities function to a Spark UDF
