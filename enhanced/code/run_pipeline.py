@@ -121,7 +121,7 @@ def main():
 
     # Initialize and run the pipeline using the implementation from policy_pipeline.py
     pipeline = PolicyPipeline(args.config, logger=logger)
-    pipeline.run(args.input, args.skip_to)
+    pipeline.run(args.input)
 
 if __name__ == "__main__":
     logger = setup_logging()

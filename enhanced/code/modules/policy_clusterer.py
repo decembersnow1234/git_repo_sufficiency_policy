@@ -1,103 +1,65 @@
-import json
 import logging
-import numpy as np
-import pandas as pd
-from pathlib import Path
-from typing import Dict, List, Tuple
-import torch
-from sklearn.cluster import AgglomerativeClustering, KMeans
-from sklearn.metrics import silhouette_score
-from sklearn.feature_extraction.text import TfidfVectorizer
-import spacy
-import yaml
-from tqdm import tqdm
+from pyspark.sql import SparkSession
+from pyspark.sql.functions import udf, col, when
+from pyspark.sql.types import ArrayType, StringType, IntegerType, FloatType
+from pyspark.ml.clustering import KMeans
 from collections import Counter
-
 from transformers import AutoTokenizer, pipeline
-from sentence_transformers import SentenceTransformer
-
 from modules.config import Config
 
 class PolicyClusterer:
-    """Cluster policy statements based on semantic similarity and impact"""
+    """Cluster policy statements based on semantic similarity and impact using PySpark"""
 
-    def __init__(self, config: Config):
+    def __init__(self, config: Config, spark: SparkSession):
         self.config = config
+        self.spark = spark
         model_name = config.get_param('models', 'impact_classifier', 'distilbert-base-uncased')
-        self.impact_classifier = pipeline("text-classification", model=model_name, tokenizer=AutoTokenizer.from_pretrained(model_name), device=0 if torch.cuda.is_available() else -1)
 
-    def classify_impact(self, policies: List[Dict]) -> List[Dict]:
-        """Classify policy impacts as positive, neutral, or negative."""
-        impact_mapping = {
+        # Load transformer model for impact classification
+        self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+        self.impact_classifier = pipeline("text-classification", model=model_name, tokenizer=self.tokenizer, device=0 if torch.cuda.is_available() else -1)
+
+        # Define impact mapping
+        self.impact_mapping = {
             'positive': ['improve', 'increase', 'enhance', 'benefit'],
             'negative': ['reduce', 'decrease', 'limit', 'restrict']
         }
 
-        for policy in tqdm(policies, desc="Classifying policy impacts"):
-            try:
-                text = policy['text'].lower()
-                policy['impact'] = next((impact for impact, words in impact_mapping.items() if any(word in text for word in words)), 'neutral')
-                policy['impact_confidence'] = 0.8  # Placeholder confidence score
-            except Exception as e:
-                logging.warning(f"Impact classification error: {e}")
-                policy['impact'], policy['impact_confidence'] = 'unknown', 0.0
+    def classify_impact(self, df):
+        """Classify policy impacts using Spark UDF"""
+        impact_udf = udf(self._get_impact_label, StringType())
+        confidence_udf = udf(lambda _: 0.8, FloatType())  # Placeholder confidence
 
-        return policies
+        df = df.withColumn("impact", impact_udf(df.text))
+        df = df.withColumn("impact_confidence", confidence_udf(df.text))
 
-    def cluster_policies(self, policies: List[Dict]) -> Tuple[List[Dict], Dict]:
-        """Cluster policy statements based on semantic similarity."""
-        if not policies:
-            logging.warning("No policies to cluster")
-            return policies, {}
+        logging.info("Policy impact classification completed")
+        return df
 
-        embeddings = np.array([policy['embedding'] for policy in policies])
-        best_n_clusters = self._find_optimal_clusters(embeddings, min(20, len(policies) // 5) if len(policies) > 10 else 2)
+    def _get_impact_label(self, text: str) -> str:
+        """Determine impact based on keywords"""
+        text_lower = text.lower()
+        for impact, words in self.impact_mapping.items():
+            if any(word in text_lower for word in words):
+                return impact
+        return "neutral"
 
-        clusters = AgglomerativeClustering(n_clusters=best_n_clusters, linkage='ward', metric='euclidean').fit_predict(embeddings)
+    def cluster_policies(self, df):
+        """Use Spark MLlib KMeans clustering on policy embeddings"""
+        kmeans = KMeans(featuresCol="embedding", k=10)
+        model = kmeans.fit(df)
+        df = model.transform(df)
 
-        for i, policy in enumerate(policies):
-            policy['cluster_id'] = int(clusters[i])
+        logging.info("Policy clustering completed")
+        return df
 
-        cluster_meta = self._generate_cluster_metadata(policies, best_n_clusters)
+    def generate_cluster_metadata(self, df):
+        """Generate cluster metadata using Spark operations"""
+        cluster_summary = df.groupBy("prediction").agg(
+            col("text").alias("sample_text"),
+            col("impact").alias("primary_impact"),
+            col("impact_confidence").alias("avg_confidence"),
+        ).orderBy(col("avg_confidence").desc())
 
-        logging.info(f"Clustered policies into {best_n_clusters} groups")
-        return policies, cluster_meta
-
-    def _find_optimal_clusters(self, embeddings: np.ndarray, max_clusters: int) -> int:
-        """Find optimal number of clusters using silhouette score."""
-        silhouette_scores = [(n_clusters, silhouette_score(embeddings, KMeans(n_clusters=n_clusters, random_state=42, n_init=10).fit_predict(embeddings)))
-                             for n_clusters in range(2, max_clusters + 1) if n_clusters < len(embeddings)]
-
-        return max(silhouette_scores, key=lambda x: x[1])[0] if silhouette_scores else min(3, max_clusters)
-
-    def _generate_cluster_metadata(self, policies: List[Dict], n_clusters: int) -> Dict:
-        """Generate metadata for each cluster."""
-        cluster_meta = {}
-
-        for cluster_id in range(n_clusters):
-            cluster_policies = [p for p in policies if p['cluster_id'] == cluster_id]
-            if not cluster_policies:
-                continue
-
-            impact_counts = Counter(p.get('impact', 'unknown') for p in cluster_policies)
-
-            embeddings = np.array([p['embedding'] for p in cluster_policies])
-            centroid = embeddings.mean(axis=0)
-            representative_policies = [cluster_policies[idx]['text'] for idx in np.argsort([np.linalg.norm(emb - centroid) for emb in embeddings])[:3]]
-
-            cluster_meta[cluster_id] = {
-                'size': len(cluster_policies),
-                'impact_distribution': dict(impact_counts),
-                'primary_impact': max(impact_counts, key=impact_counts.get),
-                'representative_policies': representative_policies,
-                'common_actors': self._extract_common_elements([p.get('actors', []) for p in cluster_policies]),
-            }
-
-        return cluster_meta
-
-    def _extract_common_elements(self, list_of_lists: List[List]) -> List:
-        """Extract common elements appearing in multiple lists."""
-        flattened_counts = Counter(element for sublist in list_of_lists for element in sublist)
-        threshold = max(2, len(list_of_lists) // 5)
-
-        return [elem for elem, count in sorted(flattened_counts.items(), key=lambda x: x[1], reverse=True) if count >= threshold][:5]
+        logging.info("Cluster metadata generated")
+        return cluster_summary
