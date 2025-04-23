@@ -1,4 +1,5 @@
 import logging
+from venv import logger
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import udf, col
 from pyspark.sql.types import ArrayType, StringType, FloatType
@@ -19,64 +20,69 @@ class DataProcessor:
         self.spark = spark
         self.nlp = spacy.load("en_core_web_sm")  # Load SpaCy globally OUTSIDE Spark transformations
 
-    def load_data(self, input_file: str):
-        """Load data efficiently using PySpark and Pandas for Excel files"""
-        file_path = str(self.config.data_dir / input_file)
+    def load_data(self, input_file: str) -> pd.DataFrame:
+    """Load data from CSV, JSON, or Excel file in chunks if necessary."""
+    file_path = self.config.data_dir / input_file
+    resolved_path = file_path.resolve()
+    print(f"Attempting to load file from: {resolved_path}")
+    
+    if not file_path.exists():
+        file_path = Path(input_file)
+        if not file_path.exists():
+            raise FileNotFoundError(f"Input file not found: {input_file}")
 
-        if not Path(file_path).exists():
-            raise FileNotFoundError(f"Input file not found: {file_path}")
+    if file_path.suffix.lower() == '.csv':
+        df = pd.read_csv(file_path, chunksize=10000)
+        df = pd.concat(df)
+    elif file_path.suffix.lower() == '.json':
+        df = pd.read_json(file_path)
+    elif file_path.suffix.lower() in ['.xls', '.xlsx']:
+        df = pd.read_excel(file_path)
+    else:
+        raise ValueError(f"Unsupported file format: {file_path.suffix}")
 
-        if file_path.endswith(".xlsx") or file_path.endswith(".xls"):
-            # Read Excel with Pandas
-            df_pandas = pd.read_excel(file_path)
+    logging.info(f"Loaded {len(df)} records from {file_path}")
+    return df
 
-            # Convert integer columns to float before passing to PySpark
-            for col in df_pandas.select_dtypes(include=["int64"]).columns:
-                df_pandas[col] = df_pandas[col].astype(float)  # Ensure all int64 values are float
+    from concurrent.futures import ProcessPoolExecutor
 
-            # Define schema for numeric columns only (leave others dynamic)
-            schema = StructType([
-                StructField(col, FloatType(), True) if df_pandas[col].dtype == "float64" else StructField(col, StringType(), True)
-                for col in df_pandas.columns
-            ])
+def preprocess_abstracts(self, abstracts: List[str]) -> List[Dict]:
+    """Preprocess abstracts with spaCy for enhanced NLP analysis using parallel processing."""
+    with ProcessPoolExecutor(max_workers=os.cpu_count()) as executor:
+        processed_docs = list(tqdm(executor.map(self._process_single_abstract, abstracts), total=len(abstracts), desc="Preprocessing abstracts"))
+    
+    logger.info(f"Preprocessed {len(processed_docs)} documents")
+    return processed_docs
 
-            # Convert Pandas DataFrame to Spark DataFrame
-            print(df_pandas.columns)
-            df = self.spark.createDataFrame(df_pandas)
-
-        elif file_path.endswith(".csv"):
-            df = self.spark.read.format("csv").option("header", "true").option("inferSchema", "true").load(file_path)
-        elif file_path.endswith(".json"):
-            df = self.spark.read.json(file_path)
-        elif file_path.endswith(".parquet"):
-            df = self.spark.read.parquet(file_path)
-        else:
-            raise ValueError(f"Unsupported file format: {file_path}")
-
-        logging.info(f"Loaded {df.count()} records from {file_path}")
-        return df
-
-    def preprocess_abstracts(self, df):
-        """Process abstracts using SpaCy (parallelized with Spark UDF)"""
-
-        # Ensure "abstract" column exists
-        if "abstract" not in df.columns:
-            raise ValueError("DataFrame does not contain column 'abstract'")
-
-        def extract_entities(text: str):
-            """Extract entities using SpaCy **inside** the UDF (to prevent serialization issues)"""
-            nlp_local = spacy.load("en_core_web_sm")  # Load SpaCy inside function to avoid Spark serialization errors
-            doc = nlp_local(text)
-            return [ent.text for ent in doc.ents]
-
-        # Convert extract_entities function to a Spark UDF
-        entity_udf = udf(extract_entities, ArrayType(StringType()))
-
-        # Apply UDF using the correct column reference
-        df = df.withColumn("entities", entity_udf(col("abstract")))  # Use col() for Spark column reference
-
-        logging.info("Finished processing abstracts using SpaCy and Spark")
-        return df
+def _process_single_abstract(self, abstract: str) -> Dict:
+    """Helper function to process a single abstract."""
+    if not isinstance(abstract, str) or not abstract.strip():
+        return {}
+    
+    doc = self.nlp(abstract)
+    processed_doc = {
+        'text': abstract,
+        'sentences': [sent.text for sent in doc.sents],
+        'entities': [
+            {
+                'text': ent.text,
+                'label': ent.label_,
+                'start': ent.start_char,
+                'end': ent.end_char
+            }
+            for ent in doc.ents
+        ],
+        'noun_chunks': [chunk.text for chunk in doc.noun_chunks],
+        'tokens': [
+            {
+                'text': token.text,
+                'pos': token.pos_,
+                'dep': token.dep_
+            }
+            for token in doc if not token.is_stop and not token.is_punct
+        ]
+    }
+    return processed_doc
 
     def save_data(self, df, output_file: str):
         """Save processed data efficiently using Parquet"""
