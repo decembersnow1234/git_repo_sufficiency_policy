@@ -14,7 +14,7 @@ import time
 from pathlib import Path
 
 # Add module paths dynamically
-sys.path.append("C:\\Users\\tchu\\Documents\\Personnel\\D4G\\Sufficiency policy\\scripts\\git_repo_sufficiency_policy\\enhanced\\code")
+sys.path.append("git_repo_sufficiency_policy\\enhanced\\code")
 
 from pyspark.sql import SparkSession
 from modules.config import Config
@@ -36,7 +36,7 @@ def setup_logging():
     )
     return logging.getLogger("pipeline_runner")
 
-def create_default_config():
+def create_default_config(logger):
     """Create a default configuration file if none exists"""
     config_path = Path("config.yaml")
     if not config_path.exists():
@@ -65,7 +65,7 @@ def create_default_config():
 
 def main():
     logger = setup_logging()
-    create_default_config()
+    create_default_config(logger)
     
     parser = argparse.ArgumentParser(description="Run the policy extraction and clustering pipeline.")
     parser.add_argument("--config", default="config.yaml", help="Path to configuration file")
