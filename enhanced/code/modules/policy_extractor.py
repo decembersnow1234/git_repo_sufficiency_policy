@@ -1,63 +1,90 @@
 import logging
+import sparknlp
+from sparknlp.base import DocumentAssembler, Pipeline, LightPipeline
+from sparknlp.annotator import (
+    Tokenizer, 
+    ClassifierDLModel, 
+    NerDLModel, 
+    NerConverter
+)
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import udf, col
-from pyspark.sql.types import ArrayType, StringType
-import spacy
-from transformers import AutoTokenizer, pipeline, AutoModelForTokenClassification
-from sentence_transformers import SentenceTransformer
+from pyspark.sql.functions import col
+from pyspark.sql.types import ArrayType, StringType, StructType, StructField, FloatType
 from modules.config import Config
-import torch
 
 class PolicyExtractor:
-    """Extract policy statements from scientific abstracts using transformer models & PySpark"""
+    """Extract policy statements using Spark NLP & PySpark"""
 
     def __init__(self, config: Config, spark: SparkSession):
         self.config = config
         self.spark = spark
-        model_name = config.get_param('models', 'policy_extractor', 'roberta-base')
 
-        # Load models - fine-tuned for policy extraction
-        self.tokenizer = AutoTokenizer.from_pretrained(model_name)
-        self.sentence_classifier = pipeline("text-classification", model=model_name, tokenizer=self.tokenizer, device=0 if torch.cuda.is_available() else -1)
-        self.ner_model = AutoModelForTokenClassification.from_pretrained(model_name)
-        self.sentence_encoder = SentenceTransformer('all-mpnet-base-v2')
+        # NLP preprocessing pipeline
+        self.pipeline = self._build_spark_nlp_pipeline()
 
-        # Load policy keywords
-        self.policy_keywords = set(config.get_param('extraction', 'policy_keywords', [
-            'policy', 'regulation', 'legislation', 'law', 'rule', 'guideline',
-            'framework', 'program', 'initiative', 'strategy', 'plan', 'measure',
-            'intervention', 'approach', 'mechanism', 'instrument', 'proposal'
-        ]))
+    def _build_spark_nlp_pipeline(self):
+        """Define NLP preprocessing pipeline using Spark NLP"""
+        document_assembler = DocumentAssembler() \
+            .setInputCol("text") \
+            .setOutputCol("document")
+
+        tokenizer = Tokenizer() \
+            .setInputCols(["document"]) \
+            .setOutputCol("tokens")
+
+        classifier = ClassifierDLModel.pretrained("classifierdl_bertwikiner_policy", "en") \
+            .setInputCols(["document"]) \
+            .setOutputCol("policy_classification")
+
+        ner_model = NerDLModel.pretrained("onto_100", "en") \
+            .setInputCols(["document", "tokens"]) \
+            .setOutputCol("ner")
+
+        ner_converter = NerConverter() \
+            .setInputCols(["document", "ner"]) \
+            .setOutputCol("entities")
+
+        pipeline = Pipeline(stages=[
+            document_assembler, tokenizer, classifier, ner_model, ner_converter
+        ])
+
+        return pipeline.fit(self.spark.createDataFrame([[""]], ["text"]))  # Fit empty DF to initialize models
 
     def extract_policies(self, df):
-        """Extract policies using Spark UDF"""
+        """Extract policy statements using Spark NLP"""
+        processed_df = self.pipeline.transform(df) \
+            .select(
+                "text", 
+                col("policy_classification.result").alias("policy_confidence"), 
+                col("entities.result").alias("entities")
+            )
 
-        def extract_policy_details(text: str) -> list:
-            """Extract structured information from a policy statement"""
+        logging.info(f"Extracted {processed_df.count()} policy statements")
+        return processed_df
 
-            if not text or not isinstance(text, str):  # Handle cases where text is None or not valid
-                return []
+# Example usage
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
 
-            # Load SpaCy inside function to avoid serialization issues
-            nlp_local = spacy.load("en_core_web_sm")
-            doc = nlp_local(text)
+    config = Config("config.yaml")
+    spark = SparkSession.builder \
+        .appName("PolicyExtractor") \
+        .config("spark.jars.packages", "JohnSnowLabs:spark-nlp:4.4.0") \
+        .getOrCreate()
 
-            # Extract policy sentences
-            policy_sentences = [sent.text for sent in doc.sents if any(word in sent.text.lower() for word in self.policy_keywords)]
+    extractor = PolicyExtractor(config, spark)
 
-            # Perform entity extraction
-            entities = [{'text': ent.text, 'label': ent.label_} for ent in doc.ents if ent.label_ in {'ORG', 'GPE', 'PERSON'}]
+    input_file = "processed_data.parquet"
+    df = spark.read.parquet(input_file)
 
-            # Generate embeddings for clustering
-            embeddings = [self.sentence_encoder.encode(sent) for sent in policy_sentences]
+    processed_df = extractor.extract_policies(df)
 
-            return [{"text": sent, "entities": entities, "embedding": emb.tolist()} for sent, emb in zip(policy_sentences, embeddings)]
+    # Schema for saving extracted policies
+    schema = StructType([
+        StructField("text", StringType(), True),
+        StructField("policy_confidence", ArrayType(StringType()), True),
+        StructField("entities", ArrayType(StringType()), True)
+    ])
 
-        # Convert function to Spark UDF
-        policy_udf = udf(extract_policy_details, ArrayType(StringType()))
-
-        # Apply UDF using the correct column reference
-        df = df.withColumn("policy_statements", policy_udf(col("abstract")))
-
-        logging.info("Policy extraction completed in parallel using Spark UDF")
-        return df
+    policy_df = spark.createDataFrame(processed_df.collect(), schema)
+    policy_df.show()

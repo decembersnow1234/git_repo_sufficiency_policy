@@ -1,22 +1,15 @@
 """
 Centralized pipeline for policy extraction and clustering from scientific abstracts
-with enhanced NLP models and semantic clustering using PySpark.
+using enhanced NLP models and semantic clustering with PySpark and Spark NLP.
 """
 
-import json
 import logging
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import udf, col
-from pyspark.sql.types import ArrayType, StringType
-import spacy
-import yaml
-from pathlib import Path
 from modules.config import Config
 from modules.data_processor import DataProcessor
 from modules.policy_extractor import PolicyExtractor
 from modules.policy_clusterer import PolicyClusterer
 from modules.visualizer import Visualizer
-from pyspark.ml.clustering import KMeans
 
 # Configure logging
 logging.basicConfig(
@@ -27,58 +20,47 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 class PolicyPipeline:
-    """Main pipeline orchestrating the policy extraction and clustering process"""
+    """Main pipeline orchestrating policy extraction and clustering using Spark NLP & PySpark"""
 
-    def __init__(self, config_path: str = "config.yaml", logger=None):  # Add logger argument
-        """Initialize the pipeline with configuration"""
+    def __init__(self, config_path: str = "config.yaml"):
+        """Initialize pipeline with configurations"""
         self.config = Config(config_path)
-        self.logger = logger if logger else logging.getLogger(__name__)  # Assign logger
-        self.spark = SparkSession.builder.appName("PolicyPipeline").getOrCreate()
+        self.spark = SparkSession.builder \
+            .appName("PolicyPipeline") \
+            .config("spark.jars.packages", "JohnSnowLabs:spark-nlp:4.4.0") \
+            .getOrCreate()
+
         self.processor = DataProcessor(self.config, self.spark)
         self.extractor = PolicyExtractor(self.config, self.spark)
         self.clusterer = PolicyClusterer(self.config, self.spark)
-        self.visualizer = Visualizer(self.config)
+        self.visualizer = Visualizer(self.config, self.spark)
 
     def run(self, input_file: str):
-        """Run the full pipeline with PySpark"""
-        logger.info(f"Starting policy extraction pipeline on {input_file}")
+        """Run the entire policy processing pipeline using Spark"""
 
-        # Load data
+        logger.info(f"Starting policy extraction pipeline for {input_file}")
+
+        # Load and preprocess data
         df = self.processor.load_data(input_file)
-
-        # Preprocess abstracts (Spark UDF)
         df = self.processor.preprocess_abstracts(df)
 
-        # Extract policies (Spark UDF)
+        # Extract policies
         df = self.extractor.extract_policies(df)
 
         # Perform clustering
-        df = self.clusterer.cluster_policies(df)
+        cluster_df = self.clusterer.cluster_policies(df)
 
-        # Visualize results
-        self.visualizer.visualize_clusters(df)
+        # Generate visualizations
+        self.visualizer.visualize_clusters(df, cluster_df)
 
         # Save final output
-        self.processor.save_data(df, "processed_policies.parquet")
-        logger.info(f"Pipeline completed successfully.")
+        self.processor.save_data(cluster_df, "processed_policies.parquet")
 
-class PolicyClusterer:
-    """Cluster policy statements efficiently using Spark MLlib"""
-
-    def __init__(self, config, spark):
-        self.config = config
-        self.spark = spark
-
-    def cluster_policies(self, df):
-        """Use KMeans clustering from Spark MLlib"""
-        kmeans = KMeans(featuresCol="features", k=10)
-        model = kmeans.fit(df)
-        df = model.transform(df)
-        return df
+        logger.info("Pipeline execution completed successfully.")
 
 if __name__ == "__main__":
     import argparse
-    parser = argparse.ArgumentParser(description="Extract and cluster policy statements using PySpark")
+    parser = argparse.ArgumentParser(description="Extract and cluster policy statements using PySpark & Spark NLP")
     parser.add_argument("--config", default="config.yaml", help="Path to configuration file")
     parser.add_argument("--input", required=True, help="Input file with abstracts (CSV, JSON, or Parquet)")
 

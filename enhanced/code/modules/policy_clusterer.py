@@ -1,12 +1,13 @@
 import logging
+import numpy as np
+import torch
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import udf, col, when
-from pyspark.sql.types import ArrayType, StringType, IntegerType, FloatType
+from pyspark.sql.functions import udf, col
+from pyspark.sql.types import ArrayType, StringType, FloatType
+from pyspark.ml.feature import VectorAssembler
 from pyspark.ml.clustering import KMeans
-from collections import Counter
 from transformers import AutoTokenizer, pipeline
 from modules.config import Config
-import torch
 
 class PolicyClusterer:
     """Cluster policy statements based on semantic similarity and impact using PySpark"""
@@ -25,25 +26,6 @@ class PolicyClusterer:
             'positive': ['improve', 'increase', 'enhance', 'benefit'],
             'negative': ['reduce', 'decrease', 'limit', 'restrict']
         }
-    def _find_optimal_clusters(self, embeddings: np.ndarray, max_clusters: int) -> int:
-    """Find optimal number of clusters using silhouette score."""
-    silhouette_scores = []
-    for n_clusters in range(2, max_clusters + 1):
-        if n_clusters >= len(embeddings):
-            continue
-        try:
-            kmeans = KMeans(n_clusters=n_clusters, random_state=42, n_init=10)
-            cluster_labels = kmeans.fit_predict(embeddings)
-            silhouette_avg = silhouette_score(embeddings, cluster_labels)
-            silhouette_scores.append((n_clusters, silhouette_avg))
-        except Exception as e:
-            logger.warning(f"Error calculating silhouette for k={n_clusters}: {e}")
-    
-    if not silhouette_scores:
-        return min(3, max_clusters)
-    
-    best_n_clusters = max(silhouette_scores, key=lambda x: x[1])[0]
-    return best_n_clusters    
 
     def classify_impact(self, df):
         """Classify policy impacts using Spark UDF"""
@@ -72,15 +54,25 @@ class PolicyClusterer:
 
     def cluster_policies(self, df):
         """Use Spark MLlib KMeans clustering on policy embeddings"""
-        
-        # Ensure the embedding column is present
+
+        # Ensure the embedding column exists
         if "embedding" not in df.columns:
             raise ValueError("DataFrame does not contain column 'embedding' for clustering")
 
-        # Convert embedding column to float type if necessary
-        df = df.withColumn("embedding", col("embedding").cast(FloatType()))
+        # Convert embeddings to Spark-compatible format
+        assembler = VectorAssembler(inputCols=["embedding"], outputCol="features")
+        df = assembler.transform(df)
 
-        kmeans = KMeans(featuresCol="embedding", predictionCol="cluster", k=10)
+        # Convert Spark DataFrame column into NumPy array
+        embeddings = np.array(df.select("embedding").toPandas()["embedding"].tolist())
+
+        if len(embeddings) < 2:
+            raise ValueError("Not enough embeddings to perform clustering")
+
+        max_clusters = min(20, len(embeddings) // 5) if len(embeddings) > 10 else 2
+
+        # Fit KMeans clustering
+        kmeans = KMeans(featuresCol="features", predictionCol="cluster", k=max_clusters)
         model = kmeans.fit(df)
         df = model.transform(df)
 
@@ -97,3 +89,20 @@ class PolicyClusterer:
 
         logging.info("Cluster metadata generated")
         return cluster_summary
+
+# Example usage
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
+
+    config = Config("config.yaml")
+    spark = SparkSession.builder.appName("PolicyClusterer").getOrCreate()
+
+    clusterer = PolicyClusterer(config, spark)
+
+    input_file = "processed_data.parquet"
+    df = spark.read.parquet(input_file)
+    df = clusterer.classify_impact(df)
+    df = clusterer.cluster_policies(df)
+    cluster_summary = clusterer.generate_cluster_metadata(df)
+
+    cluster_summary.show()
