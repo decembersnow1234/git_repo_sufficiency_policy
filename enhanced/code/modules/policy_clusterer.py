@@ -25,6 +25,25 @@ class PolicyClusterer:
             'positive': ['improve', 'increase', 'enhance', 'benefit'],
             'negative': ['reduce', 'decrease', 'limit', 'restrict']
         }
+    def _find_optimal_clusters(self, embeddings: np.ndarray, max_clusters: int) -> int:
+    """Find optimal number of clusters using silhouette score."""
+    silhouette_scores = []
+    for n_clusters in range(2, max_clusters + 1):
+        if n_clusters >= len(embeddings):
+            continue
+        try:
+            kmeans = KMeans(n_clusters=n_clusters, random_state=42, n_init=10)
+            cluster_labels = kmeans.fit_predict(embeddings)
+            silhouette_avg = silhouette_score(embeddings, cluster_labels)
+            silhouette_scores.append((n_clusters, silhouette_avg))
+        except Exception as e:
+            logger.warning(f"Error calculating silhouette for k={n_clusters}: {e}")
+    
+    if not silhouette_scores:
+        return min(3, max_clusters)
+    
+    best_n_clusters = max(silhouette_scores, key=lambda x: x[1])[0]
+    return best_n_clusters    
 
     def classify_impact(self, df):
         """Classify policy impacts using Spark UDF"""
