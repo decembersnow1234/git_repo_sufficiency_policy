@@ -2,7 +2,13 @@
 Centralized pipeline for policy extraction and clustering from scientific abstracts
 using enhanced NLP models and semantic clustering with PySpark and Spark NLP.
 """
+# Correcting module path handling for cross-platform compatibility
+MODULES_PATH = "/content/git_repo_sufficiency_policy/enhanced/code"
+if not os.path.exists(MODULES_PATH):
+    print(f"❌ ERROR: Modules directory '{MODULES_PATH}' not found!")
+    sys.exit(1)
 
+sys.path.append(MODULES_PATH)
 import logging
 from pyspark.sql import SparkSession
 from modules.config import Config
