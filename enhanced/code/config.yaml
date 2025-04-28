@@ -1,4 +1,3 @@
-# config.yaml
 # Configuration for the policy extraction and clustering pipeline
 
 # File paths
@@ -9,15 +8,14 @@ paths:
 
 # Model configurations
 models:
-  # Which model to use for policy extraction
-  # In production, this would be a fine-tuned model specific to policy detection
-  policy_extractor: "roberta-base"
+  # Policy extraction model (fine-tuned for regulatory text analysis)
+  policy_extractor: "JohnSnowLabs/spark-nlp/classifierdl_bertwikiner_policy"
   
-  # Model for impact classification
-  impact_classifier: "distilbert-base-uncased"
+  # Impact classification model (optimized for policy sentiment)
+  impact_classifier: "distilbert-base-uncased-finetuned-sentiment"
   
   # Sentence embedding model for clustering
-  semantic_model: "all-mpnet-base-v2"
+  semantic_model: "sentence-transformers/all-mpnet-base-v2"
 
 # Processing parameters
 parameters:
@@ -26,13 +24,13 @@ parameters:
   policy_confidence_threshold: 0.3
   
   # Clustering parameters
-  max_clusters: 20
-  min_cluster_size: 5
-  clustering_method: "hierarchical"  # Options: "hierarchical", "kmeans"
+  max_clusters: 30  # Increased for larger datasets
+  min_cluster_size: 3  # Smaller minimum for finer granularity
+  clustering_method: "hierarchical"  # Options: "hierarchical", "kmeans", "dbscan"
 
 # Policy extraction configuration
 extraction:
-  # Keywords that suggest a policy statement
+  # Expanded list of policy-related keywords (sector-specific additions)
   policy_keywords:
     - policy
     - regulation
@@ -47,39 +45,48 @@ extraction:
     - plan
     - measure
     - intervention
-    - approach
     - mechanism
     - instrument
     - proposal
     - recommendation
     - action
-    - should
-    - must
-    - need
-    - require
-    
-  # Syntactic patterns that suggest policy statements
-  # These are simplified for the config and would be implemented in code
+    - mandate
+    - compliance
+    - governance
+    - directive
+    - statute
+    - ordinance
+    - protocol
+    - enforcement
+    - oversight
+
+  # Syntactic patterns suggesting policy statements
   policy_patterns:
-    - "MODAL VERB ACTION_VERB"
-    - "RECOMMEND THAT"
-    - "SUGGEST THAT"
-    - "POLICY TO VERB"
+    - "MODAL VERB + ACTION VERB + OBJECT"
+    - "RECOMMEND THAT SUBJECT VERB"
+    - "SUGGEST IMPLEMENTATION OF X"
+    - "PROPOSE NEW REGULATION ON X"
+    - "POLICY SHOULD ADDRESS X"
+    - "MANDATE ACTION TO ACHIEVE X"
 
 # Impact classification configuration
 impact:
-  # Words suggesting positive impact
+  # Expanded list of impact-related keywords
   positive_keywords:
     - improve
     - increase
     - enhance
-    - benefit
-    - positive
-    - advance
     - strengthen
     - promote
-    
-  # Words suggesting negative impact
+    - foster
+    - advance
+    - sustainable
+    - resilient
+    - efficient
+    - equitable
+    - beneficial
+    - encourage
+
   negative_keywords:
     - reduce
     - decrease
@@ -88,7 +95,11 @@ impact:
     - negative
     - harmful
     - adverse
-    - worsen
+    - costly
+    - inefficient
+    - controversial
+    - exacerbate
+    - burden
 
 # Visualization settings
 visualization:
@@ -100,4 +111,11 @@ visualization:
     unknown: "#95a5a6"
     
   # Number of representative examples per cluster
-  n_examples: 3
+  n_examples: 5  # Increased for better interpretability
+
+  # Additional plot options
+  plot_types:
+    - "bar"
+    - "scatter"
+    - "heatmap"
+    - "network"
