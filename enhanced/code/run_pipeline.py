@@ -35,7 +35,7 @@ logger = logging.getLogger("pipeline_runner")
 def verify_available_models():
     """Check and list available pre-trained models in Spark NLP"""
     print("\n🔍 Available Pretrained Pipelines:\n")
-    print(PretrainedPipeline.list())  # Corrected method
+    
 
 
 def main():
