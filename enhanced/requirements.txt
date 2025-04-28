@@ -11,3 +11,5 @@ matplotlib
 seaborn
 openpyxl
 pyspark
+spark-nlp
+tensorflow==2.14.0
