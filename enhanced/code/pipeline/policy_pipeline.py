@@ -38,7 +38,7 @@ logger = logging.getLogger(__name__)
 class PolicyPipeline:
     """Main pipeline orchestrating policy extraction and clustering using Spark NLP & PySpark"""
 
-    def __init__(self, config_path: str = "config.yaml"):
+    def __init__(self, config_path: str = "/content/git_repo_sufficiency_policy/enhanced/code/pipeline/config.yaml"):
         """Initialize pipeline with configurations"""
         self.config = Config(config_path)
         self.spark = SparkSession.builder \
