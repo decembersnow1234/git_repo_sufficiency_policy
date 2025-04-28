@@ -14,7 +14,7 @@ import time
 from pathlib import Path
 
 # Add module paths dynamically
-sys.path.append("git_repo_sufficiency_policy\\enhanced\\code")
+sys.path.append("git_repo_sufficiency_policy/enhanced/code")
 
 from pyspark.sql import SparkSession
 from modules.config import Config
