@@ -75,18 +75,22 @@ def main():
     args = parser.parse_args()
 
     # Initialize Spark Session with Spark NLP
-    spark = SparkSession.builder \
-        .appName("PolicyPipeline") \
-        .config("spark.jars.packages", "JohnSnowLabs:spark-nlp:4.4.0") \
-        .getOrCreate()
+    try:
+        spark = SparkSession.builder \
+            .appName("PolicyPipeline") \
+            .config("spark.jars.packages", "com.johnsnowlabs.nlp:spark-nlp_2.12:4.4.0") \
+            .getOrCreate()
+        print("✅ Spark initialized successfully!")
+    except Exception as e:
+        print("❌ Spark initialization failed:", e)
+        sys.exit(1)  # Exit the script if Spark fails
 
+    # Validate config file existence
     config_path = Path(args.config)
     if not config_path.exists():
         logger.error(f"Configuration file not found: {config_path}")
         sys.exit(1)
 
+    # Run the policy pipeline
     pipeline = PolicyPipeline(config_path, spark)
     pipeline.run(args.input)
-
-if __name__ == "__main__":
-    main()
