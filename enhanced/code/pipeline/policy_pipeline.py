@@ -3,24 +3,8 @@ Centralized pipeline for policy extraction and clustering from scientific abstra
 using enhanced NLP models and semantic clustering with PySpark and Spark NLP.
 """
 
-import argparse
 import logging
-import json
-import yaml
-import sys
 import os
-import time
-from pathlib import Path
-
-# Correcting module path handling for cross-platform compatibility
-MODULES_PATH = "/content/git_repo_sufficiency_policy/enhanced/code"
-if not os.path.exists(MODULES_PATH):
-    print(f"❌ ERROR: Modules directory '{MODULES_PATH}' not found!")
-    sys.exit(1)
-
-sys.path.append(MODULES_PATH)
-import logging
-from pyspark.sql import SparkSession
 from modules.config import Config
 from modules.data_processor import DataProcessor
 from modules.policy_extractor import PolicyExtractor
@@ -36,16 +20,17 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 class PolicyPipeline:
-    """Main pipeline orchestrating policy extraction and clustering using Spark NLP & PySpark"""
+    """Main pipeline for policy extraction and clustering using Spark NLP & PySpark"""
 
-    def __init__(self, config_path: str = "enhanced/code/pipeline/policy_pipeline.py"):
+    def __init__(self, config_path: str, spark):
         """Initialize pipeline with configurations"""
+        if not os.path.exists(config_path):
+            raise FileNotFoundError(f"❌ ERROR: Config file '{config_path}' not found!")
+        
         self.config = Config(config_path)
-        self.spark = SparkSession.builder \
-            .appName("PolicyPipeline") \
-            .config("spark.jars.packages", "JohnSnowLabs:spark-nlp:4.4.0") \
-            .getOrCreate()
+        self.spark = spark  # ✅ Uses the Spark session initialized in `run_pipeline.py`
 
+        # Initialize pipeline components
         self.processor = DataProcessor(self.config, self.spark)
         self.extractor = PolicyExtractor(self.config, self.spark)
         self.clusterer = PolicyClusterer(self.config, self.spark)
@@ -53,8 +38,7 @@ class PolicyPipeline:
 
     def run(self, input_file: str):
         """Run the entire policy processing pipeline using Spark"""
-
-        logger.info(f"Starting policy extraction pipeline for {input_file}")
+        logger.info(f"🚀 Starting policy extraction pipeline for {input_file}")
 
         # Load and preprocess data
         df = self.processor.load_data(input_file)
@@ -72,15 +56,4 @@ class PolicyPipeline:
         # Save final output
         self.processor.save_data(cluster_df, "processed_policies.parquet")
 
-        logger.info("Pipeline execution completed successfully.")
-
-if __name__ == "__main__":
-    import argparse
-    parser = argparse.ArgumentParser(description="Extract and cluster policy statements using PySpark & Spark NLP")
-    parser.add_argument("--config", default="config.yaml", help="Path to configuration file")
-    parser.add_argument("--input", required=True, help="Input file with abstracts (CSV, JSON, or Parquet)")
-
-    args = parser.parse_args()
-
-    pipeline = PolicyPipeline(args.config)
-    pipeline.run(args.input)
+        logger.info("✅ Pipeline execution completed successfully.")
